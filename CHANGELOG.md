@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added a `SpotLight2D` component which can be used to create spotlights (#52).
+
+### Changed
+
+- Adjusted the occlusion example to include spotlights.
+
 ## [0.8.0] - 2025-10-14
 
 ### Changed
