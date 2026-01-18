@@ -2,9 +2,9 @@ use bevy::core_pipeline::FullscreenShader;
 use bevy::prelude::*;
 use bevy::render::render_resource::binding_types::uniform_buffer;
 use bevy::render::render_resource::{
-    BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState, ColorWrites,
-    FragmentState, GpuArrayBuffer, MultisampleState, PipelineCache, PrimitiveState,
-    RenderPipelineDescriptor, ShaderStages, TextureFormat,
+    BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntries, CachedRenderPipelineId,
+    ColorTargetState, ColorWrites, FragmentState, GpuArrayBuffer, MultisampleState, PipelineCache,
+    PrimitiveState, RenderPipelineDescriptor, ShaderStages, TextureFormat, WgpuLimits,
 };
 use bevy::render::renderer::RenderDevice;
 use bevy::render::view::ViewUniform;
@@ -35,7 +35,23 @@ impl FromWorld for SdfPipeline {
                 ShaderStages::FRAGMENT,
                 (
                     uniform_buffer::<ViewUniform>(true),
-                    GpuArrayBuffer::<ExtractedLightOccluder2d>::binding_layout(render_device),
+                    GpuArrayBuffer::<ExtractedLightOccluder2d>::binding_layout(
+                        &WgpuLimits::default(),
+                    ),
+                    uniform_buffer::<PointLightMeta>(false),
+                ),
+            ),
+        );
+
+        let layout_descriptor = BindGroupLayoutDescriptor::new(
+            SDF_BIND_GROUP_LAYOUT,
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::FRAGMENT,
+                (
+                    uniform_buffer::<ViewUniform>(true),
+                    GpuArrayBuffer::<ExtractedLightOccluder2d>::binding_layout(
+                        &WgpuLimits::default(),
+                    ),
                     uniform_buffer::<PointLightMeta>(false),
                 ),
             ),
@@ -43,7 +59,7 @@ impl FromWorld for SdfPipeline {
 
         let pipeline_id = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
             label: Some(SDF_PIPELINE.into()),
-            layout: vec![layout.clone()],
+            layout: vec![layout_descriptor],
             vertex: fullscreen_shader.to_vertex_state(),
             fragment: Some(FragmentState {
                 shader: SDF_SHADER,

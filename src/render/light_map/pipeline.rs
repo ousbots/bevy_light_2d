@@ -3,10 +3,10 @@ use bevy::ecs::resource::Resource;
 use bevy::ecs::world::{FromWorld, World};
 use bevy::render::render_resource::binding_types::{sampler, texture_2d, uniform_buffer};
 use bevy::render::render_resource::{
-    BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState, ColorWrites,
-    FragmentState, GpuArrayBuffer, MultisampleState, PipelineCache, PrimitiveState,
-    RenderPipelineDescriptor, Sampler, SamplerBindingType, SamplerDescriptor, ShaderStages,
-    TextureFormat, TextureSampleType,
+    BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntries, CachedRenderPipelineId,
+    ColorTargetState, ColorWrites, FragmentState, GpuArrayBuffer, MultisampleState, PipelineCache,
+    PrimitiveState, RenderPipelineDescriptor, Sampler, SamplerBindingType, SamplerDescriptor,
+    ShaderStages, TextureFormat, TextureSampleType, WgpuLimits,
 };
 use bevy::render::renderer::RenderDevice;
 use bevy::render::view::ViewUniform;
@@ -31,6 +31,24 @@ impl FromWorld for LightMapPipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
         let fullscreen_shader = world.resource::<FullscreenShader>().clone();
+        let limits = WgpuLimits::default();
+
+        let layout_descriptor = BindGroupLayoutDescriptor::new(
+            LIGHT_MAP_BIND_GROUP_LAYOUT,
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::FRAGMENT,
+                (
+                    uniform_buffer::<ViewUniform>(true),
+                    uniform_buffer::<ExtractedAmbientLight2d>(true),
+                    GpuArrayBuffer::<ExtractedPointLight2d>::binding_layout(&limits),
+                    uniform_buffer::<PointLightMeta>(false),
+                    texture_2d(TextureSampleType::Float { filterable: true }),
+                    sampler(SamplerBindingType::Filtering),
+                    GpuArrayBuffer::<ExtractedSpotLight2d>::binding_layout(&limits),
+                    uniform_buffer::<SpotLightMeta>(false),
+                ),
+            ),
+        );
 
         let layout = render_device.create_bind_group_layout(
             LIGHT_MAP_BIND_GROUP_LAYOUT,
@@ -39,11 +57,11 @@ impl FromWorld for LightMapPipeline {
                 (
                     uniform_buffer::<ViewUniform>(true),
                     uniform_buffer::<ExtractedAmbientLight2d>(true),
-                    GpuArrayBuffer::<ExtractedPointLight2d>::binding_layout(render_device),
+                    GpuArrayBuffer::<ExtractedPointLight2d>::binding_layout(&limits),
                     uniform_buffer::<PointLightMeta>(false),
                     texture_2d(TextureSampleType::Float { filterable: true }),
                     sampler(SamplerBindingType::Filtering),
-                    GpuArrayBuffer::<ExtractedSpotLight2d>::binding_layout(render_device),
+                    GpuArrayBuffer::<ExtractedSpotLight2d>::binding_layout(&limits),
                     uniform_buffer::<SpotLightMeta>(false),
                 ),
             ),
@@ -56,7 +74,7 @@ impl FromWorld for LightMapPipeline {
                 .resource_mut::<PipelineCache>()
                 .queue_render_pipeline(RenderPipelineDescriptor {
                     label: Some(LIGHT_MAP_PIPELINE.into()),
-                    layout: vec![layout.clone()],
+                    layout: vec![layout_descriptor],
                     vertex: fullscreen_shader.to_vertex_state(),
                     fragment: Some(FragmentState {
                         shader: LIGHT_MAP_SHADER,
